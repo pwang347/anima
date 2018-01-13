@@ -1,0 +1,25 @@
+{
+  "name": "anima",
+  "version": "1.0.0",
+  "description": "Three.js data visualizer app",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm stop; npm start",
+    "start": "browserify scenes/main.js -o dist/index.js && python3 -m http.server",
+    "stop": "pkill -f 'python3 -m http.server'",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pwang347/anima.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pwang347/anima/issues"
+  },
+  "homepage": "https://github.com/pwang347/anima#readme",
+  "dependencies": {
+    "three": "^0.89.0"
+  }
+}
