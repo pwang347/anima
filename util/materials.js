@@ -5,7 +5,7 @@ var defaultMaterial = new THREE.MeshBasicMaterial({
 });
 
 var mountainMaterial = new THREE.MeshBasicMaterial({
-	color: 0x4eee94,
+	color: 0x274b7d,
 	shading: THREE.FlatShading
 });
 var mountainMaterial2 = new THREE.MeshBasicMaterial({
@@ -14,7 +14,7 @@ var mountainMaterial2 = new THREE.MeshBasicMaterial({
 });
 
 var textMaterial = new THREE.MeshBasicMaterial({
-	color: 0x4CA6FF,
+	color: 0xffffff,
 	shading: THREE.FlatShading
 });
 
@@ -28,9 +28,15 @@ var circleMaterial = new THREE.MeshBasicMaterial({
 	shading: THREE.FlatShading
 });
 
+var treeMaterial = new THREE.MeshBasicMaterial({
+	color: 0x008080,
+	shading: THREE.FlatShading
+});
+
 
 exports.defaultMaterial = defaultMaterial;
 exports.mountainMaterial = mountainMaterial;
 exports.mountainMaterial2 = mountainMaterial2;
 exports.textMaterial = textMaterial;
 exports.particleMaterial = particleMaterial;
+exports.treeMaterial = treeMaterial;

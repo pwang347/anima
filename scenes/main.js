@@ -8,18 +8,40 @@ var materials = require('../util/materials.js');
 var renderer, scene, camera, composer, particle, progress, mountains;
 
 window.onload = function() {
+  var summonerData = fetch('https://localhost:8001/').then((resp) => {
+    return resp.json();
+  }).then((json) => {
+    return json['results']
+  });
   init();
   animate();
 }
+
+var summonerData = {
+  'summoner_name': 'LinusTechTips',
+  'max_progress': 1000,
+  'summaries': [
+    {
+      'start_date': '2017-05-30',
+      'end_date': '2017-06-30',
+      'num_games': 10,
+      'favourite_champion': {
+        'name': 'Caitlyn',
+        'colours': ['#ffffff', '#000000'],
+      },
+      'win_ratio': 0.5,
+    }
+  ]
+}
+
 
 var velocity = new THREE.Vector3();
 var prevTime = performance.now();
 var speed = 100.0;
 var moving = false;
-var MAX_PROGRESS = 1000;
 var tween;
 var currentLevel = 0;
-var levels = [0, 300];
+var levels = [0, 500, 1000];
 var mesh_map = {
   'background': [
     '',
@@ -41,7 +63,7 @@ var mesh_map = {
 
 document.onkeypress = function (event) {
   var keyCode = event.keyCode;
-  if (keyCode == 100 && progress < MAX_PROGRESS - 1){
+  if (keyCode == 100 && progress < summonerData['max_progress'] - 1){
     velocity.x = speed;
     moving = true;
   } else if (keyCode == 97 && progress > 1){
@@ -54,21 +76,37 @@ document.onkeyup = function (event) {
    moving = false;
 }
 
+function createMountainRange(container, scale){
+  let range = 0
+  while (range < summonerData['max_progress']) {
+    let x_d = Math.random() * 20 * (Math.random() >= 0.5) ? 1 : -1
+    let y_d = Math.random() * 5 * (Math.random() >= 0.5) ? 1 : -1
+    let z_d = -1 * Math.random() * 10 * (Math.random() >= 0.5)
+    let scale_d = Math.random() * 3 * (Math.random() >= 0.5) ? 1 : -1
+    let level = getLevelFromProgress(range);
+    let mountainShape = new THREE.Mesh(...getFromMeshMap('mountain', level));
+    mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = scale + scale_d - (x_d * 2 / 20);
+    mountainShape.position.set(range + x_d, y_d, z_d-5);
+    container.add(mountainShape);
+    range += 20
+  }
+}
+
 function createMountains(container, offset_x, offset_y, offset_z, scale){
   let level = getLevelFromProgress(offset_x);
-  let mountainShape = new THREE.Mesh(...mesh_map['mountain'][level]);
+  let mountainShape = new THREE.Mesh(...getFromMeshMap('mountain', level));
   mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = scale*1.5;
   mountainShape.position.set(offset_x, offset_y, offset_z);
   container.add(mountainShape);
 
-  let mountainShape2 = new THREE.Mesh(...mesh_map['mountain'][level]);
+  let mountainShape2 = new THREE.Mesh(...getFromMeshMap('mountain', level));
   mountainShape2.scale.x = mountainShape2.scale.y = mountainShape2.scale.z = scale*3;
   mountainShape2.position.set(offset_x + 5, offset_y-5, offset_z-5);
   container.add(mountainShape2);
 
-  let mountainShape3 = new THREE.Mesh(...mesh_map['mountain'][level]);
+  let mountainShape3 = new THREE.Mesh(...getFromMeshMap('mountain', level));
   mountainShape3.scale.x = mountainShape3.scale.y = mountainShape3.scale.z = scale*2;
-  mountainShape3.position.set(offset_x + 2, offset_y-5, offset_z-5);
+  mountainShape3.position.set(offset_x + 2, offset_y + 10, offset_z-10);
   container.add(mountainShape3);
 }
 
@@ -103,10 +141,10 @@ function createTextCarousel(text, x, y, z, size){
       size: size,
       height: 0,
     });
-  var text = new THREE.Mesh(textGeometry, materials.textMaterial);
-  text.position.set(x, y, z);
-  circle.position.set(x, y, z-5);
-  scene.add(text);
+  var textObj = new THREE.Mesh(textGeometry, materials.textMaterial);
+  textObj.position.set(x, y + 10, z);
+  circle.position.set(x, y + 10, z-5);
+  scene.add(textObj);
   scene.add(circle);
   });
 }
@@ -119,24 +157,24 @@ function init() {
   renderer.setClearColor(0x000000, 0.0);
   document.getElementById('canvas').appendChild(renderer.domElement);
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x4CA6FF);
-  scene.fog = new THREE.Fog(0x4ca6ff, 0.015, 30);
+  scene.background = new THREE.Color(0x6fccc9);
+  scene.fog = new THREE.Fog(0x4ca6ff, 0.015, 50);
   // text
   var loader = new THREE.FontLoader();
   loader.load('fonts/Open Sans_Regular.json', function (font) {
-  var textGeometry = new THREE.TextGeometry('Hello', {
+  var textGeometry = new THREE.TextGeometry('Hello, ' + summonerData['summoner_name'], {
       font: font,
-      size: 3,
+      size: 2,
       height: 0,
     });
   var text = new THREE.Mesh(textGeometry, materials.textMaterial);
-  text.position.set(0, 0, 0);
+  text.position.set(0, 10, 0);
   scene.add(text);
   });
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.z = 12;
-  camera.position.y = 10;
+  camera.position.y = 15;
   scene.add(camera);
   particle = new THREE.Object3D();
   mountains = new THREE.Object3D();
@@ -148,7 +186,13 @@ function init() {
   createPositionalAudio('audio/mitis_change_will_come.mp3', 400, 0, 0);
   createPositionalAudio('audio/mitis_pain.mp3', 600, 0,0);
 
-  createTextCarousel('Games won: 50', 0, 0, 0, 3);
+  var counter = 1
+  for (let summary of summonerData['summaries']){
+    createTextCarousel('Games won: ' + summary['num_games'] * summary['win_ratio'], 500*counter, 0, 0, 2);
+    createTextCarousel('Games played: ' + summary['num_games'], 500*counter + 100, 0, 0, 2)
+    createTextCarousel('Favourite champion: ' + summary['favourite_champion']['name'], 500*counter + 200, 0, 0, 2)
+    counter += 1
+  }
 
   for (var i = 0; i < 1000; i++) {
     var mesh = new THREE.Mesh(...mesh_map['particle'][0]);
@@ -158,9 +202,7 @@ function init() {
     particle.add(mesh);
   }
 
-  createMountains(mountains, 0, 0, 0, 1)
-  createMountains(mountains, 200, -3, 10, 0.6)
-  createMountains(mountains, 350, -3, 10, 0.6)
+  createMountainRange(mountains, 1)
 
   var ambientLight = new THREE.AmbientLight(0xffffff);
   scene.add(ambientLight);
@@ -185,7 +227,7 @@ function onWindowResize() {
 }
 
 function getFromMeshMap(key, currentLevel){
-  if (currentLevel > mesh_map[key].length){
+  if (currentLevel >= mesh_map[key].length){
     return mesh_map[key][mesh_map[key].length-1]
   } else {
     return mesh_map[key][currentLevel]
@@ -228,10 +270,11 @@ function animate() {
   if (camera.position.x + velocity.x * delta < 0){
     camera.position.x = 0;
     moving = false
-  } else if (camera.position.x + velocity.x * delta > MAX_PROGRESS) {
-    camera.position.x = MAX_PROGRESS;
+  } else if (camera.position.x + velocity.x * delta > summonerData['max_progress']) {
+    camera.position.x = summonerData['max_progress'];
     moving = false
   }
+  mountains.rotation.x += 0.00001;
   camera.translateX(velocity.x * delta);
   if (moving === false) {
      velocity.x /= 1.5
