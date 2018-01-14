@@ -2,7 +2,7 @@ var THREE = require('three');
 var shapes = require('../util/shapes.js');
 var materials = require('../util/materials.js');
 
-var renderer, scene, camera, composer, particle;
+var renderer, scene, camera, composer, particle, progress;
 
 window.onload = function() {
   init();
@@ -13,13 +13,14 @@ var velocity = new THREE.Vector3();
 var prevTime = performance.now();
 var speed = 100.0;
 var moving = false;
+var MAX_PROGRESS = 100;
 
 document.onkeypress = function ( event ) {
   var keyCode = event.keyCode;
-  if (keyCode == 100){
+  if (keyCode == 100 && progress < MAX_PROGRESS - 1){
     velocity.x = speed;
     moving = true;
-  } else if (keyCode == 97){
+  } else if (keyCode == 97 && progress > 1){
     velocity.x = -speed;
     moving = true;
   }
@@ -29,6 +30,23 @@ document.onkeyup = function ( event ) {
    moving = false;
 }
 
+function createMountains(container){
+  var mountainShape = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = 1.5;
+  container.add(mountainShape);
+
+  var mountainShape2 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  mountainShape2.scale.x = mountainShape2.scale.y = mountainShape2.scale.z = 3;
+  mountainShape2.position.set(5, -5, -5);
+  container.add(mountainShape2);
+
+  var mountainShape3 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  mountainShape3.scale.x = mountainShape3.scale.y = mountainShape3.scale.z = 2;
+  mountainShape3.position.set(2, -5, -5);
+  container.add(mountainShape3);
+}
+
+
 function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio((window.devicePixelRatio) ? window.devicePixelRatio : 1);
@@ -36,8 +54,20 @@ function init() {
   renderer.autoClear = false;
   renderer.setClearColor(0x000000, 0.0);
   document.getElementById('canvas').appendChild(renderer.domElement);
-
   scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xffffff);
+  // text
+  loader = new THREE.FontLoader();
+  loader.load('fonts/Open Sans_Regular.json', function (font) {
+  var textGeometry = new THREE.TextGeometry('Hello', {
+      font: font,
+      size: 3,
+      height: 0,
+    });
+  var text = new THREE.Mesh(textGeometry, materials.textMaterial);
+  text.position.set(0, 10, 0);
+  scene.add(text);
+  });
 
   // audio stuff
   let audioLoader = new THREE.AudioLoader();
@@ -50,12 +80,13 @@ function init() {
   });
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-  camera.position.z = 300;
+  camera.position.z = 12;
+  camera.position.y = 10;
   scene.add(camera);
   particle = new THREE.Object3D();
-  objects = new THREE.Object3D();
+  mountains = new THREE.Object3D();
   scene.add(particle);
-  scene.add(objects);
+  scene.add(mountains);
 
   var geometry = new THREE.TetrahedronGeometry(2, 0);
   var material = new THREE.MeshPhongMaterial({
@@ -71,9 +102,7 @@ function init() {
     particle.add(mesh);
   }
 
-  var heartShape = new THREE.Mesh(shapes.heartGeometry, materials.heartMaterial);
-  heartShape.scale.x = heartShape.scale.y = heartShape.scale.z = 5;
-  objects.add(heartShape);
+  createMountains(mountains)
 
   var ambientLight = new THREE.AmbientLight(0x999999);
   scene.add(ambientLight);
@@ -106,7 +135,16 @@ function animate() {
   renderer.render(scene, camera)
   let time = performance.now();
   let delta = (time - prevTime) / 1000;
-  //pass velocity as an argument to translateX and call it on camera.
+  progress = camera.position.x;
+  if (camera.position.x + velocity.x * delta < 0){
+    console.log("[L] c: " + camera.position.x + "v: " + velocity.x);
+    camera.position.x = 0;
+    moving = false
+  } else if (camera.position.x + velocity.x * delta > MAX_PROGRESS) {
+    console.log("[R] c: " + camera.position.x + "v: " + velocity.x);
+    camera.position.x = MAX_PROGRESS;
+    moving = false
+  }
   camera.translateX(velocity.x * delta);
   if (moving === false) {
      velocity.x /= 1.5
