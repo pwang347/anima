@@ -8,11 +8,11 @@ var materials = require('../util/materials.js');
 var renderer, scene, camera, composer, particle, progress, mountains;
 
 window.onload = function() {
-  var summonerData = fetch('https://localhost:8001/').then((resp) => {
+  /*var summonerData = fetch('https://localhost:8001/').then((resp) => {
     return resp.json();
   }).then((json) => {
     return json['results']
-  });
+  });*/
   init();
   animate();
 }
@@ -41,11 +41,12 @@ var speed = 100.0;
 var moving = false;
 var tween;
 var currentLevel = 0;
-var levels = [0, 500, 1000];
+var transitionZones = [[0, 0], [300, 600], [1000,1300]]
 var mesh_map = {
   'background': [
-    '',
-    '',
+    new THREE.Color(0x6fccc9),
+    new THREE.Color(0x6fccc9),
+    new THREE.Color(0xff3300),
   ],
   'mountain': [
     [shapes.mountainGeometry, materials.mountainMaterial],
@@ -118,7 +119,7 @@ function createPositionalAudio(audio_file, x, y, z){
   let audioLoader = new THREE.AudioLoader();
   audioLoader.load(audio_file, function(buffer) {
     sound.setBuffer(buffer);
-    sound.setRefDistance(20);
+    sound.setRefDistance(1);
     sound.play();
   });
   // create an object for the sound to play from
@@ -250,12 +251,35 @@ function startTween(level){
 
 function getLevelFromProgress(progress){
   let level = -1;
-  for (let pos in levels){
-    if (progress >= pos) {
+  for (let pos in transitionZones){
+    if (progress >= pos[0]) {
       level += 1;
     }
   }
-  return level;
+  return level
+}
+
+function lerpRGB(target, first_color, second_color, percentage){
+    target.r = THREE.Math.lerp(second_color.r, first_color.r, percentage)
+    target.g = THREE.Math.lerp(second_color.g, first_color.g, percentage)
+    target.b = THREE.Math.lerp(second_color.b, first_color.b, percentage)
+}
+
+function lerpBackground(){
+  let percentage, first_color, second_color;
+  if (currentLevel < transitionZones.length && progress > transitionZones[currentLevel][0] && progress <= transitionZones[currentLevel][1]){
+      percentage = (transitionZones[currentLevel][1]-progress)/(transitionZones[currentLevel][1] - transitionZones[currentLevel][0])
+      console.log(percentage);
+      first_color = getFromMeshMap('background', currentLevel);
+      second_color = getFromMeshMap('background', currentLevel + 1);
+      lerpRGB(scene.background, first_color, second_color, percentage);
+  } else if (currentLevel > 0 && progress >= transitionZones[currentLevel -1][0] && progress <= transitionZones[currentLevel-1][1]){
+      percentage = (transitionZones[currentLevel-1][1]-progress)/(transitionZones[currentLevel-1][1] - transitionZones[currentLevel-1][0])
+      console.log(percentage);
+      first_color = getFromMeshMap('background', currentLevel);
+      second_color = getFromMeshMap('background', currentLevel - 1);
+      lerpRGB(scene.background, first_color, second_color, percentage);
+  }
 }
 
 function animate() {
@@ -266,7 +290,7 @@ function animate() {
   renderer.render(scene, camera)
   let time = performance.now();
   let delta = (time - prevTime) / 1000;
-  progress = camera.position.x;
+  progress = camera.position.x;   
   if (camera.position.x + velocity.x * delta < 0){
     camera.position.x = 0;
     moving = false
@@ -274,20 +298,18 @@ function animate() {
     camera.position.x = summonerData['max_progress'];
     moving = false
   }
+  lerpBackground()
+  if (progress > transitionZones[currentLevel][1]){
+    currentLevel += 1
+    console.log("level is " + currentLevel)
+  } else if (currentLevel > 0 && progress < transitionZones[currentLevel-1][0]){
+    currentLevel -= 1
+    console.log("level is " + currentLevel)
+  }
   mountains.rotation.x += 0.00001;
   camera.translateX(velocity.x * delta);
   if (moving === false) {
      velocity.x /= 1.5
   }
   prevTime = time;
-  if (progress > levels[currentLevel] + 50) {
-    if (currentLevel < levels.length) currentLevel += 1;
-    startTween(currentLevel);
-  } else if (progress < levels[currentLevel] - 50){
-    if (currentLevel > 0) currentLevel -= 1;
-    startTween(currentLevel);
-  }
-  if (tween) {
-    tween.update(delta);
-  }
 };
