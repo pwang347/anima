@@ -7,15 +7,10 @@ var materials = require('../util/materials.js');
 
 var renderer, scene, camera, composer, particle, progress, mountains, meshesByLevel, transitionZones, velocity, speed, moving, tween, currentLevel, meshMap, prevTime;
 
-window.onload = function() {
-  /*var summonerData = fetch('https://localhost:8001/').then((resp) => {
-    return resp.json();
-  }).then((json) => {
-    return json['results']
-  });*/
+window.addEventListener("load", function() {
   init();
   animate();
-}
+}, false);
 
 var summonerData = {
   'summoner_name': 'LinusTechTips',
@@ -209,6 +204,31 @@ function init() {
   }
 
   createMountainRange(mountains, 1)
+  function get_palette(champion_name) {
+    URL = "http://localhost:8001/riot/get_palette?champion_name=" + champion_name;
+    return fetch(URL);
+  }
+
+  get_palette("caitlin").then((resp) => {
+    return resp.json();
+  }).then((obj) => {
+    if (obj['results'] === undefined) return;
+    for (let color of obj['results']) {
+      let randMat = new MeshLambertMaterial({
+        color: color,
+        flatShading: true
+      });
+      let randGeometry = new THREE.TextGeometry(color, {
+        font: font,
+        size: 2,
+        height: 0,
+      });
+      var randShape = new THREE.mesh(randGeometry, randMat);
+      randShape.position.set(1, y+10*Math.random(), 0);
+      scene.add(randShape);
+    }
+  });
+
 
   var ambientLight = new THREE.AmbientLight(0xffffff);
   scene.add(ambientLight);
