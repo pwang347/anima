@@ -15,18 +15,8 @@ window.addEventListener("load", function() {
 var summonerData = {
   'summoner_name': 'LinusTechTips',
   'max_progress': 1000,
-  'summaries': [
-    {
-      'start_date': '2017-05-30',
-      'end_date': '2017-06-30',
-      'num_games': 10,
-      'favourite_champion': {
-        'name': 'Caitlyn',
-        'colours': ['#ffffff', '#000000'],
-      },
-      'win_ratio': 0.5,
-    }
-  ]
+  'start_date': '2017-05-30',
+  'end_date': '2017-06-30',
 }
 
 document.onkeypress = function (event) {
@@ -172,42 +162,48 @@ function init() {
     return fetch(URL);
   }
 
-  get_summoner_data("linustechtips").then((resp) => {
-    return resp.json();
-  }).then((obj) => {
-    if (obj['result'] === undefined) return;
-      var most_frequent_list = Object.keys(obj['champ_games_played']).map(function(key) {
-          return [key, obj['champ_games_played'][key]];
-      });
-      most_frequent_list.sort(function(first, second) {
-        return second[1] - first[1];
-      });
-      let top_three_played = most_frequent_list.slice(0, 3);
-      var most_skilled_list = Object.keys(obj['champ_games_won']).map(function(key) {
-          return [key, obj['champ_games_won'][key]];
-      });
-      most_skilled_list.sort(function(first, second) {
-        return second[1] - first[1];
-      });
-      let top_three_skilled = most_skilled_list.slice(0, 3);
-      console.log(most_skilled_list)
-      console.log(most_frequent_list)
-      createTextCarousel('Most frequent champions played: ' + top_three_played, 100, 0, 0, 1);
-      createTextCarousel('Most skilled champions: ' + top_three_skilled, 200, 0, 0, 1)
-  });
-
-  // text
-  var loader = new THREE.FontLoader();
-  loader.load('fonts/Open Sans_Regular.json', function (font) {
-  var textGeometry = new THREE.TextGeometry('Hello, ' + summonerData['summoner_name'], {
-      font: font,
-      size: 2,
-      height: 0,
+  document.getElementById('submit-button').addEventListener('click', function(e){
+    console.log("michael's head woke up")
+    e.preventDefault();
+    summonerData['summoner_name'] = document.getElementById("summoner-id").value;
+    get_summoner_data(summonerData['summoner_name']).then((resp) => {
+      return resp.json();
+    }).then((obj) => {
+      if (obj['result'] === undefined) return;
+        var most_frequent_list = Object.keys(obj['champ_games_played']).map(function(key) {
+            return [key, obj['champ_games_played'][key]];
+        });
+        most_frequent_list.sort(function(first, second) {
+          return second[1] - first[1];
+        });
+        let top_three_played = most_frequent_list.slice(0, 3);
+        var most_skilled_list = Object.keys(obj['champ_games_won']).map(function(key) {
+            return [key, obj['champ_games_won'][key]];
+        });
+        most_skilled_list.sort(function(first, second) {
+          return second[1] - first[1];
+        });
+        let top_three_skilled = most_skilled_list.slice(0, 3);
+        console.log(most_skilled_list)
+        console.log(most_frequent_list)
+        createTextCarousel('Most frequent champions played: ' + top_three_played, 100, 0, 0, 1);
+        createTextCarousel('Most skilled champions: ' + top_three_skilled, 200, 0, 0, 1)
     });
-  var text = new THREE.Mesh(textGeometry, materials.textMaterial);
-  text.position.set(0, 10, 0);
-  scene.add(text);
-  });
+
+    // text
+    var loader = new THREE.FontLoader();
+    loader.load('fonts/Open Sans_Regular.json', function (font) {
+    var textGeometry = new THREE.TextGeometry('Hello, ' + summonerData['summoner_name'], {
+        font: font,
+        size: 2,
+        height: 0,
+      });
+    var text = new THREE.Mesh(textGeometry, materials.textMaterial);
+    text.position.set(0, 10, 0);
+    scene.add(text);
+    return false;
+    });
+  }, false);
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.z = 12;
