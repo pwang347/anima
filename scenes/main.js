@@ -1,8 +1,11 @@
+"use strict";
+
 var THREE = require('three');
+var TWEEN = require('tween.js');
 var shapes = require('../util/shapes.js');
 var materials = require('../util/materials.js');
 
-var renderer, scene, camera, composer, particle, progress;
+var renderer, scene, camera, composer, particle, progress, mountains;
 
 window.onload = function() {
   init();
@@ -15,8 +18,28 @@ var speed = 100.0;
 var moving = false;
 var MAX_PROGRESS = 1000;
 var tween;
+var currentLevel = 0;
+var levels = [0, 300];
+var mesh_map = {
+  'background': [
+    '',
+    '',
+  ],
+  'mountain': [
+    [shapes.mountainGeometry, materials.mountainMaterial],
+    [shapes.mountainGeometry, materials.mountainMaterial2],
+  ],
+  'particle': [
+    [shapes.particleGeometry, materials.particleMaterial],
+    [shapes.particleGeometry, materials.particleMaterial],
+  ],
+  'text': [
+    [shapes.textGeometry, materials.textMaterial],
+    [shapes.textGeometry, materials.textMaterial],
+  ]
+};
 
-document.onkeypress = function ( event ) {
+document.onkeypress = function (event) {
   var keyCode = event.keyCode;
   if (keyCode == 100 && progress < MAX_PROGRESS - 1){
     velocity.x = speed;
@@ -27,22 +50,23 @@ document.onkeypress = function ( event ) {
   }
 }
 
-document.onkeyup = function ( event ) {
+document.onkeyup = function (event) {
    moving = false;
 }
 
 function createMountains(container, offset_x, offset_y, offset_z, scale){
-  let mountainShape = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  let level = getLevelFromProgress(offset_x);
+  let mountainShape = new THREE.Mesh(...mesh_map['mountain'][level]);
   mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = scale*1.5;
   mountainShape.position.set(offset_x, offset_y, offset_z);
   container.add(mountainShape);
 
-  let mountainShape2 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  let mountainShape2 = new THREE.Mesh(...mesh_map['mountain'][level]);
   mountainShape2.scale.x = mountainShape2.scale.y = mountainShape2.scale.z = scale*3;
   mountainShape2.position.set(offset_x + 5, offset_y-5, offset_z-5);
   container.add(mountainShape2);
 
-  let mountainShape3 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  let mountainShape3 = new THREE.Mesh(...mesh_map['mountain'][level]);
   mountainShape3.scale.x = mountainShape3.scale.y = mountainShape3.scale.z = scale*2;
   mountainShape3.position.set(offset_x + 2, offset_y-5, offset_z-5);
   container.add(mountainShape3);
@@ -61,7 +85,7 @@ function createPositionalAudio(audio_file, x, y, z){
   });
   // create an object for the sound to play from
   let sphere = new THREE.SphereGeometry(20, 32, 16);
-  let material = new THREE.MeshPhongMaterial({ color: 0xff2200 });
+  let material = new THREE.ShadowMaterial({ color: 0xff2200 });
   let audio1 = new THREE.Mesh(sphere, material);
   scene.add(audio1);
   audio1.add(sound);
@@ -69,16 +93,6 @@ function createPositionalAudio(audio_file, x, y, z){
   audio1.position.y = y
   audio1.position.z = z
 }
-
-/* TODO
-function createBackgroundTransition(x, y, z){
-  if (shouldBeginTween){
-    tween = new TWEEN.Tween(INTERSECTED.material.color)
-    .to({r: 0, g: 25, b: 155}, 2000)
-    .easing(TWEEN.Easing.Quartic.In)
-    .start();
-  }
-}*/
 
 function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -89,16 +103,16 @@ function init() {
   document.getElementById('canvas').appendChild(renderer.domElement);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x6fccc9);
-  scene.fog = new THREE.Fog(0x000000, 0.015, 50);
+  scene.fog = new THREE.Fog(0x4ca6ff, 0.015, 50);
   // text
-  loader = new THREE.FontLoader();
+  let loader = new THREE.FontLoader();
   loader.load('fonts/Open Sans_Regular.json', function (font) {
   var textGeometry = new THREE.TextGeometry('Hello', {
       font: font,
       size: 3,
       height: 0,
     });
-  var text = new THREE.Mesh(textGeometry, materials.textMaterial);
+  var text = new THREE.Mesh(shapes.textGeometry, materials.textMaterial);
   text.position.set(0, 10, 0);
   scene.add(text);
   });
@@ -118,7 +132,7 @@ function init() {
   createPositionalAudio('audio/mitis_pain.mp3', 600, 0,0);
 
   for (var i = 0; i < 1000; i++) {
-    var mesh = new THREE.Mesh(shapes.particleGeometry, materials.particleMaterial);
+    var mesh = new THREE.Mesh(...mesh_map['particle'][0]);
     mesh.position.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
     mesh.position.multiplyScalar(90 + (Math.random() * 700));
     mesh.rotation.set(Math.random() * 2, Math.random() * 2, Math.random() * 2);
@@ -126,7 +140,7 @@ function init() {
   }
 
   createMountains(mountains, 0, 0, 0, 1)
-  createMountains(mountains, 100, -3, 10, 0.6)
+  createMountains(mountains, 350, -3, 10, 0.6)
 
   var ambientLight = new THREE.AmbientLight(0xffffff);
   scene.add(ambientLight);
@@ -150,6 +164,38 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function getFromMeshMap(key, currentLevel){
+  if (currentLevel > mesh_map[key].length){
+    return mesh_map[key][mesh_map[key].length-1]
+  } else {
+    return mesh_map[key][currentLevel]
+  }
+}
+
+function startTween(level){
+  for (let j = 0; j < mountains.children.length; j++) {
+    let new_mesh = getFromMeshMap('mountain', currentLevel);
+    let new_material_color = null;
+    if (new_mesh) {
+      new_material_color = new_mesh[1].color;
+    }
+    tween = new TWEEN.Tween(mountains.children[j].material.color)
+    .to(new_material_color, 2000)
+    .easing(TWEEN.Easing.Quartic.In)
+    .start();
+  }
+}
+
+function getLevelFromProgress(progress){
+  let level = -1;
+  for (let pos in levels){
+    if (progress >= pos) {
+      level += 1;
+    }
+  }
+  return level;
+}
+
 function animate() {
   requestAnimationFrame(animate);
   particle.rotation.x += 0.0000;
@@ -171,8 +217,14 @@ function animate() {
      velocity.x /= 1.5
   }
   prevTime = time;
-  scene.traverse (function (object){
-    console.log(object.name);
-  });
-  if (tween) tween.update(delta);
+  if (progress > levels[currentLevel] + 50) {
+    if (currentLevel < levels.length) currentLevel += 1;
+    startTween(currentLevel);
+  } else if (progress < levels[currentLevel] - 50){
+    if (currentLevel > 0) currentLevel -= 1;
+    startTween(currentLevel);
+  }
+  if (tween) {
+    tween.update(delta);
+  }
 };
