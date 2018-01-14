@@ -1,17 +1,25 @@
 var THREE = require('three');
-var defaultMaterial = new THREE.MeshPhongMaterial({
+var defaultMaterial = new THREE.MeshBasicMaterial({
 	color: 0xffffff,
 	shading: THREE.FlatShading
 });
 
-var mountainMaterial = new THREE.MeshPhongMaterial({
-	color: 0x90CEB9,
+var mountainMaterial = new THREE.MeshBasicMaterial({
+	color: 0x4eee94,
 	shading: THREE.FlatShading
 });
 
-var textMaterial = new THREE.MeshPhongMaterial({
-	color: 0x000000,
+var textMaterial = new THREE.MeshBasicMaterial({
+	color: 0x4CA6FF,
+	shading: THREE.FlatShading
+});
+
+var particleMaterial = new THREE.MeshBasicMaterial({
+	color: 0xfaf7e5,
 	shading: THREE.FlatShading
 });
 
 exports.defaultMaterial = defaultMaterial;
+exports.mountainMaterial = mountainMaterial;
+exports.textMaterial = textMaterial;
+exports.particleMaterial = particleMaterial;

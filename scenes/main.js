@@ -13,7 +13,8 @@ var velocity = new THREE.Vector3();
 var prevTime = performance.now();
 var speed = 100.0;
 var moving = false;
-var MAX_PROGRESS = 100;
+var MAX_PROGRESS = 1000;
+var tween;
 
 document.onkeypress = function ( event ) {
   var keyCode = event.keyCode;
@@ -30,22 +31,54 @@ document.onkeyup = function ( event ) {
    moving = false;
 }
 
-function createMountains(container){
-  var mountainShape = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
-  mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = 1.5;
+function createMountains(container, offset_x, offset_y, offset_z, scale){
+  let mountainShape = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = scale*1.5;
+  mountainShape.position.set(offset_x, offset_y, offset_z);
   container.add(mountainShape);
 
-  var mountainShape2 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
-  mountainShape2.scale.x = mountainShape2.scale.y = mountainShape2.scale.z = 3;
-  mountainShape2.position.set(5, -5, -5);
+  let mountainShape2 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  mountainShape2.scale.x = mountainShape2.scale.y = mountainShape2.scale.z = scale*3;
+  mountainShape2.position.set(offset_x + 5, offset_y-5, offset_z-5);
   container.add(mountainShape2);
 
-  var mountainShape3 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
-  mountainShape3.scale.x = mountainShape3.scale.y = mountainShape3.scale.z = 2;
-  mountainShape3.position.set(2, -5, -5);
+  let mountainShape3 = new THREE.Mesh(shapes.mountainGeometry, materials.mountainMaterial);
+  mountainShape3.scale.x = mountainShape3.scale.y = mountainShape3.scale.z = scale*2;
+  mountainShape3.position.set(offset_x + 2, offset_y-5, offset_z-5);
   container.add(mountainShape3);
 }
 
+function createPositionalAudio(audio_file, x, y, z){
+   // audio stuff
+  let listener = new THREE.AudioListener();
+  camera.add(listener);
+  let sound = new THREE.PositionalAudio(listener);
+  let audioLoader = new THREE.AudioLoader();
+  audioLoader.load(audio_file, function(buffer) {
+    sound.setBuffer(buffer);
+    sound.setRefDistance(20);
+    sound.play();
+  });
+  // create an object for the sound to play from
+  let sphere = new THREE.SphereGeometry(20, 32, 16);
+  let material = new THREE.MeshPhongMaterial({ color: 0xff2200 });
+  let audio1 = new THREE.Mesh(sphere, material);
+  scene.add(audio1);
+  audio1.add(sound);
+  audio1.position.x = x
+  audio1.position.y = y
+  audio1.position.z = z
+}
+
+/* TODO
+function createBackgroundTransition(x, y, z){
+  if (shouldBeginTween){
+    tween = new TWEEN.Tween(INTERSECTED.material.color)
+    .to({r: 0, g: 25, b: 155}, 2000)
+    .easing(TWEEN.Easing.Quartic.In)
+    .start();
+  }
+}*/
 
 function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -55,7 +88,8 @@ function init() {
   renderer.setClearColor(0x000000, 0.0);
   document.getElementById('canvas').appendChild(renderer.domElement);
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xffffff);
+  scene.background = new THREE.Color(0x6fccc9);
+  scene.fog = new THREE.Fog(0x000000, 0.015, 50);
   // text
   loader = new THREE.FontLoader();
   loader.load('fonts/Open Sans_Regular.json', function (font) {
@@ -69,16 +103,6 @@ function init() {
   scene.add(text);
   });
 
-  // audio stuff
-  let audioLoader = new THREE.AudioLoader();
-  let listener = new THREE.AudioListener();
-  let audio = new THREE.Audio( listener );
-  audioLoader.load('audio/mitis_change_will_come.mp3', function (buffer) {
-    audio.setBuffer(buffer);
-    audio.setLoop(true);
-    audio.play();
-  });
-
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.z = 12;
   camera.position.y = 10;
@@ -88,25 +112,24 @@ function init() {
   scene.add(particle);
   scene.add(mountains);
 
-  var geometry = new THREE.TetrahedronGeometry(2, 0);
-  var material = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    shading: THREE.FlatShading
-  });
+  createPositionalAudio('audio/mitis_born.mp3', 0, 0, 0);
+  createPositionalAudio('audio/mitis_the_boy_who_shattered_time.mp3', 200, 0,0);
+  createPositionalAudio('audio/mitis_change_will_come.mp3', 400, 0, 0);
+  createPositionalAudio('audio/mitis_pain.mp3', 600, 0,0);
 
   for (var i = 0; i < 1000; i++) {
-    var mesh = new THREE.Mesh(geometry, material);
+    var mesh = new THREE.Mesh(shapes.particleGeometry, materials.particleMaterial);
     mesh.position.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
     mesh.position.multiplyScalar(90 + (Math.random() * 700));
     mesh.rotation.set(Math.random() * 2, Math.random() * 2, Math.random() * 2);
     particle.add(mesh);
   }
 
-  createMountains(mountains)
+  createMountains(mountains, 0, 0, 0, 1)
+  createMountains(mountains, 100, -3, 10, 0.6)
 
-  var ambientLight = new THREE.AmbientLight(0x999999);
+  var ambientLight = new THREE.AmbientLight(0xffffff);
   scene.add(ambientLight);
-  
   var lights = [];
   lights[0] = new THREE.DirectionalLight(0xffffff, 1);
   lights[0].position.set(1, 0, 0);
@@ -137,11 +160,9 @@ function animate() {
   let delta = (time - prevTime) / 1000;
   progress = camera.position.x;
   if (camera.position.x + velocity.x * delta < 0){
-    console.log("[L] c: " + camera.position.x + "v: " + velocity.x);
     camera.position.x = 0;
     moving = false
   } else if (camera.position.x + velocity.x * delta > MAX_PROGRESS) {
-    console.log("[R] c: " + camera.position.x + "v: " + velocity.x);
     camera.position.x = MAX_PROGRESS;
     moving = false
   }
@@ -150,4 +171,8 @@ function animate() {
      velocity.x /= 1.5
   }
   prevTime = time;
+  scene.traverse (function (object){
+    console.log(object.name);
+  });
+  if (tween) tween.update(delta);
 };
