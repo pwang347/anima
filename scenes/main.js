@@ -190,6 +190,7 @@ function init() {
         createTextCarousel('Most skilled champions: ' + top_three_skilled, 200, 0, 0, 1)
     });
 
+    console.log(summonerData);
     // text
     var loader = new THREE.FontLoader();
     loader.load('fonts/Open Sans_Regular.json', function (font) {
