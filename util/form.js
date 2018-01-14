@@ -8,14 +8,14 @@ function processForm(e) {
   if (summoner_id === "" || summoner_id == null) {
     alert("Please enter a summoner ID.")
   } else {
-    formdiv.className = "go-away"
+    form_div.className = "go-away"
   }
 
   return false;
 }
 
 window.addEventListener("load", function() {
-  let butt = getElementById("submit-button");
+  let butt = document.getElementById("submit-button");
   if (butt.attachEvent) {
     butt.attachEvent("click", processForm);
   } else {
