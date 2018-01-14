@@ -56,7 +56,7 @@ function createMountainRange(container, scale){
     mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = scale + scale_d - (x_d * 2 / 20);
     mountainShape.position.set(range + x_d, y_d, z_d-5);
     addLevelMesh(mountainShape, container, range + x_d, 'mountain');
-    range += 20
+    range += 10
   }
 }
 
@@ -100,20 +100,27 @@ function createPositionalAudio(audio_file, x, y, z){
   audio1.position.z = z
 }
 
-function createTextCarousel(text, x, y, z, size){
+function createTextCarousel(text, x, y, z, size, color){
   var loader = new THREE.FontLoader();
-  var circle = new THREE.Mesh(shapes.circleGeometry, materials.circleMaterial);
   loader.load('fonts/Open Sans_Regular.json', function (font) {
   var textGeometry = new THREE.TextGeometry(text, {
       font: font,
       size: size,
       height: 0,
     });
-  var textObj = new THREE.Mesh(textGeometry, materials.textMaterial);
+  if (!color) {
+    color = materials.textMaterial.color
+  }
+  let textMaterial = new THREE.MeshBasicMaterial({
+    color: color,
+    flatShading: true
+  });
+  var textObj = new THREE.Mesh(textGeometry, textMaterial);
+  //var circle = new THREE.Mesh(shapes.circleGeometry, textMaterial);
   textObj.position.set(x, y + 10, z);
-  circle.position.set(x, y + 10, z-5);
+  //circle.position.set(x, y + 10, z-1);
   addLevelMesh(textObj, scene, x, 'text');
-  addLevelMesh(circle, scene, x, 'text');
+  //addLevelMesh(circle, scene, x, 'text');
   });
 }
 
@@ -160,6 +167,35 @@ function init() {
   scene.background = new THREE.Color(0x6fccc9);
   scene.fog = new THREE.Fog(0x4ca6ff, 0.015, 50);
 
+  function get_summoner_data(summoner_name) {
+    URL = "http://localhost:8001/riot/get_and_store_summoner_data?name=" + summoner_name;
+    return fetch(URL);
+  }
+
+  get_summoner_data("linustechtips").then((resp) => {
+    return resp.json();
+  }).then((obj) => {
+    if (obj['result'] === undefined) return;
+      var most_frequent_list = Object.keys(obj['champ_games_played']).map(function(key) {
+          return [key, obj['champ_games_played'][key]];
+      });
+      most_frequent_list.sort(function(first, second) {
+        return second[1] - first[1];
+      });
+      let top_three_played = most_frequent_list.slice(0, 3);
+      var most_skilled_list = Object.keys(obj['champ_games_won']).map(function(key) {
+          return [key, obj['champ_games_won'][key]];
+      });
+      most_skilled_list.sort(function(first, second) {
+        return second[1] - first[1];
+      });
+      let top_three_skilled = most_skilled_list.slice(0, 3);
+      console.log(most_skilled_list)
+      console.log(most_frequent_list)
+      createTextCarousel('Most frequent champions played: ' + top_three_played, 100, 0, 0, 1);
+      createTextCarousel('Most skilled champions: ' + top_three_skilled, 200, 0, 0, 1)
+  });
+
   // text
   var loader = new THREE.FontLoader();
   loader.load('fonts/Open Sans_Regular.json', function (font) {
@@ -187,14 +223,6 @@ function init() {
   createPositionalAudio('audio/mitis_change_will_come.mp3', 400, 0, 0);
   createPositionalAudio('audio/mitis_pain.mp3', 600, 0,0);
 
-  var counter = 1
-  for (let summary of summonerData['summaries']){
-    createTextCarousel('Games won: ' + summary['num_games'] * summary['win_ratio'], 500*counter, 0, 0, 2);
-    createTextCarousel('Games played: ' + summary['num_games'], 500*counter + 100, 0, 0, 2)
-    createTextCarousel('Favourite champion: ' + summary['favourite_champion']['name'], 500*counter + 200, 0, 0, 2)
-    counter += 1
-  }
-
   for (var i = 0; i < 1000; i++) {
     var mesh = new THREE.Mesh(shapes.particleGeometry, materials.particleMaterial);
     mesh.position.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
@@ -209,23 +237,14 @@ function init() {
     return fetch(URL);
   }
 
-  get_palette("caitlin").then((resp) => {
+  get_palette("aatrox").then((resp) => {
     return resp.json();
   }).then((obj) => {
     if (obj['results'] === undefined) return;
+    let counter = 1;
     for (let color of obj['results']) {
-      let randMat = new MeshLambertMaterial({
-        color: color,
-        flatShading: true
-      });
-      let randGeometry = new THREE.TextGeometry(color, {
-        font: font,
-        size: 2,
-        height: 0,
-      });
-      var randShape = new THREE.mesh(randGeometry, randMat);
-      randShape.position.set(1, y+10*Math.random(), 0);
-      scene.add(randShape);
+      createTextCarousel(color, 1, 1*counter, 0, 1, color)
+    counter += 1;
     }
   });
 
@@ -275,7 +294,7 @@ function startTween(level){
 }
 
 function getLevelFromProgress(progress){
-  let level = -1;
+  let level = 0;
   for (let pos in transitionZones){
     if (progress >= pos[0]) {
       level += 1;

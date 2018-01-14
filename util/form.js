@@ -21,4 +21,9 @@ window.addEventListener("load", function() {
   } else {
     butt.addEventListener("click", processForm);
   }
+
+  let form = document.getElementById("id-form");
+  if (form.attachEvent) {
+    form.attachEvent("submit", processForm);
+  }
 }, false)
