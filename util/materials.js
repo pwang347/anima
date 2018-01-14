@@ -23,6 +23,12 @@ var particleMaterial = new THREE.MeshBasicMaterial({
 	shading: THREE.FlatShading
 });
 
+var circleMaterial = new THREE.MeshBasicMaterial({
+	color: 0xfaf7e5,
+	shading: THREE.FlatShading
+});
+
+
 exports.defaultMaterial = defaultMaterial;
 exports.mountainMaterial = mountainMaterial;
 exports.mountainMaterial2 = mountainMaterial2;

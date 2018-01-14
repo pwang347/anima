@@ -94,6 +94,23 @@ function createPositionalAudio(audio_file, x, y, z){
   audio1.position.z = z
 }
 
+function createTextCarousel(text, x, y, z, size){
+  var loader = new THREE.FontLoader();
+  var circle = new THREE.Mesh(shapes.circleGeometry, materials.circleMaterial);
+  loader.load('fonts/Open Sans_Regular.json', function (font) {
+  var textGeometry = new THREE.TextGeometry(text, {
+      font: font,
+      size: size,
+      height: 0,
+    });
+  var text = new THREE.Mesh(textGeometry, materials.textMaterial);
+  text.position.set(x, y, z);
+  circle.position.set(x, y, z-5);
+  scene.add(text);
+  scene.add(circle);
+  });
+}
+
 function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio((window.devicePixelRatio) ? window.devicePixelRatio : 1);
@@ -102,18 +119,18 @@ function init() {
   renderer.setClearColor(0x000000, 0.0);
   document.getElementById('canvas').appendChild(renderer.domElement);
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x6fccc9);
-  scene.fog = new THREE.Fog(0x4ca6ff, 0.015, 50);
+  scene.background = new THREE.Color(0x4CA6FF);
+  scene.fog = new THREE.Fog(0x4ca6ff, 0.015, 30);
   // text
-  let loader = new THREE.FontLoader();
+  var loader = new THREE.FontLoader();
   loader.load('fonts/Open Sans_Regular.json', function (font) {
   var textGeometry = new THREE.TextGeometry('Hello', {
       font: font,
       size: 3,
       height: 0,
     });
-  var text = new THREE.Mesh(shapes.textGeometry, materials.textMaterial);
-  text.position.set(0, 10, 0);
+  var text = new THREE.Mesh(textGeometry, materials.textMaterial);
+  text.position.set(0, 0, 0);
   scene.add(text);
   });
 
@@ -131,6 +148,8 @@ function init() {
   createPositionalAudio('audio/mitis_change_will_come.mp3', 400, 0, 0);
   createPositionalAudio('audio/mitis_pain.mp3', 600, 0,0);
 
+  createTextCarousel('Games won: 50', 0, 0, 0, 3);
+
   for (var i = 0; i < 1000; i++) {
     var mesh = new THREE.Mesh(...mesh_map['particle'][0]);
     mesh.position.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
@@ -140,6 +159,7 @@ function init() {
   }
 
   createMountains(mountains, 0, 0, 0, 1)
+  createMountains(mountains, 200, -3, 10, 0.6)
   createMountains(mountains, 350, -3, 10, 0.6)
 
   var ambientLight = new THREE.AmbientLight(0xffffff);
