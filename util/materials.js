@@ -9,7 +9,7 @@ var mountainMaterial = new THREE.MeshBasicMaterial({
 	shading: THREE.FlatShading
 });
 var mountainMaterial2 = new THREE.MeshBasicMaterial({
-	color: 0x856864,
+	color: 0x000000,
 	shading: THREE.FlatShading
 });
 

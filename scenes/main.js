@@ -5,7 +5,7 @@ var TWEEN = require('tween.js');
 var shapes = require('../util/shapes.js');
 var materials = require('../util/materials.js');
 
-var renderer, scene, camera, composer, particle, progress, mountains;
+var renderer, scene, camera, composer, particle, progress, mountains, meshesByLevel, transitionZones, velocity, speed, moving, tween, currentLevel, meshMap, prevTime;
 
 window.onload = function() {
   /*var summonerData = fetch('https://localhost:8001/').then((resp) => {
@@ -34,34 +34,6 @@ var summonerData = {
   ]
 }
 
-
-var velocity = new THREE.Vector3();
-var prevTime = performance.now();
-var speed = 100.0;
-var moving = false;
-var tween;
-var currentLevel = 0;
-var transitionZones = [[0, 0], [300, 600], [1000,1300]]
-var mesh_map = {
-  'background': [
-    new THREE.Color(0x6fccc9),
-    new THREE.Color(0x6fccc9),
-    new THREE.Color(0xff3300),
-  ],
-  'mountain': [
-    [shapes.mountainGeometry, materials.mountainMaterial],
-    [shapes.mountainGeometry, materials.mountainMaterial2],
-  ],
-  'particle': [
-    [shapes.particleGeometry, materials.particleMaterial],
-    [shapes.particleGeometry, materials.particleMaterial],
-  ],
-  'text': [
-    [shapes.textGeometry, materials.textMaterial],
-    [shapes.textGeometry, materials.textMaterial],
-  ]
-};
-
 document.onkeypress = function (event) {
   var keyCode = event.keyCode;
   if (keyCode == 100 && progress < summonerData['max_progress'] - 1){
@@ -88,7 +60,7 @@ function createMountainRange(container, scale){
     let mountainShape = new THREE.Mesh(...getFromMeshMap('mountain', level));
     mountainShape.scale.x = mountainShape.scale.y = mountainShape.scale.z = scale + scale_d - (x_d * 2 / 20);
     mountainShape.position.set(range + x_d, y_d, z_d-5);
-    container.add(mountainShape);
+    addLevelMesh(mountainShape, container, range + x_d, 'mountain');
     range += 20
   }
 }
@@ -145,12 +117,44 @@ function createTextCarousel(text, x, y, z, size){
   var textObj = new THREE.Mesh(textGeometry, materials.textMaterial);
   textObj.position.set(x, y + 10, z);
   circle.position.set(x, y + 10, z-5);
-  scene.add(textObj);
-  scene.add(circle);
+  addLevelMesh(textObj, scene, x, 'text');
+  addLevelMesh(circle, scene, x, 'text');
   });
 }
 
+function addLevelMesh(mesh, container, progress, mesh_type_id){
+  if (!meshesByLevel){
+    meshesByLevel = [[]] // init zero case too
+    for(let idx in transitionZones){
+      meshesByLevel.push([])
+    }
+  }
+  mesh.mesh_type_id = mesh_type_id;
+  meshesByLevel[getLevelFromProgress(progress)].push(mesh);
+  container.add(mesh);
+}
+
 function init() {
+  transitionZones = [[300, 600], [1000,1300]]
+  velocity = new THREE.Vector3();
+  speed = 100.0;
+  moving = false;
+  prevTime = performance.now();
+  currentLevel = 0;
+  meshMap = {
+    'background': [
+      new THREE.Color(0x6fccc9),
+      new THREE.Color(0x00ffff),
+    ],
+    'mountain': [
+      [shapes.mountainGeometry, materials.mountainMaterial],
+      [shapes.mountainGeometry, materials.mountainMaterial2],
+    ],
+    'text': [
+      [null, materials.textMaterial],
+      [null, materials.textMaterial],
+    ]
+  };
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio((window.devicePixelRatio) ? window.devicePixelRatio : 1);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -160,6 +164,7 @@ function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x6fccc9);
   scene.fog = new THREE.Fog(0x4ca6ff, 0.015, 50);
+
   // text
   var loader = new THREE.FontLoader();
   loader.load('fonts/Open Sans_Regular.json', function (font) {
@@ -196,7 +201,7 @@ function init() {
   }
 
   for (var i = 0; i < 1000; i++) {
-    var mesh = new THREE.Mesh(...mesh_map['particle'][0]);
+    var mesh = new THREE.Mesh(shapes.particleGeometry, materials.particleMaterial);
     mesh.position.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
     mesh.position.multiplyScalar(90 + (Math.random() * 700));
     mesh.rotation.set(Math.random() * 2, Math.random() * 2, Math.random() * 2);
@@ -228,10 +233,10 @@ function onWindowResize() {
 }
 
 function getFromMeshMap(key, currentLevel){
-  if (currentLevel >= mesh_map[key].length){
-    return mesh_map[key][mesh_map[key].length-1]
+  if (currentLevel >= meshMap[key].length){
+    return meshMap[key][meshMap[key].length-1]
   } else {
-    return mesh_map[key][currentLevel]
+    return meshMap[key][currentLevel]
   }
 }
 
@@ -260,25 +265,35 @@ function getLevelFromProgress(progress){
 }
 
 function lerpRGB(target, first_color, second_color, percentage){
-    target.r = THREE.Math.lerp(second_color.r, first_color.r, percentage)
-    target.g = THREE.Math.lerp(second_color.g, first_color.g, percentage)
-    target.b = THREE.Math.lerp(second_color.b, first_color.b, percentage)
+    target.r = THREE.Math.lerp(first_color.r, second_color.r, percentage)
+    target.g = THREE.Math.lerp(first_color.g, second_color.g, percentage)
+    target.b = THREE.Math.lerp(first_color.b, second_color.b, percentage)
 }
 
 function lerpBackground(){
   let percentage, first_color, second_color;
   if (currentLevel < transitionZones.length && progress > transitionZones[currentLevel][0] && progress <= transitionZones[currentLevel][1]){
-      percentage = (transitionZones[currentLevel][1]-progress)/(transitionZones[currentLevel][1] - transitionZones[currentLevel][0])
-      console.log(percentage);
+      percentage = (progress - transitionZones[currentLevel][0])/(transitionZones[currentLevel][1] - transitionZones[currentLevel][0])
       first_color = getFromMeshMap('background', currentLevel);
       second_color = getFromMeshMap('background', currentLevel + 1);
       lerpRGB(scene.background, first_color, second_color, percentage);
+      let meshesInLevel = meshesByLevel[currentLevel];
+      for (let mesh of meshesInLevel){
+        let f_c = getFromMeshMap(mesh.mesh_type_id, currentLevel)[1].color;
+        let s_c = getFromMeshMap(mesh.mesh_type_id, currentLevel + 1)[1].color;
+        lerpRGB(mesh.material.color, f_c, s_c, percentage);
+      }
   } else if (currentLevel > 0 && progress >= transitionZones[currentLevel -1][0] && progress <= transitionZones[currentLevel-1][1]){
       percentage = (transitionZones[currentLevel-1][1]-progress)/(transitionZones[currentLevel-1][1] - transitionZones[currentLevel-1][0])
-      console.log(percentage);
       first_color = getFromMeshMap('background', currentLevel);
       second_color = getFromMeshMap('background', currentLevel - 1);
       lerpRGB(scene.background, first_color, second_color, percentage);
+      let meshesInLevel = meshesByLevel[currentLevel];
+      for (let mesh of meshesInLevel){
+        let f_c = getFromMeshMap(mesh.mesh_type_id, currentLevel)[1].color;
+        let s_c = getFromMeshMap(mesh.mesh_type_id, currentLevel - 1)[1].color;
+        lerpRGB(mesh.material.color, f_c, s_c, percentage);
+      } 
   }
 }
 
